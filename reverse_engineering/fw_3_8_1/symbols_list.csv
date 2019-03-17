@@ -82,6 +82,7 @@
 0x5EAC,_bsp_serial_io_init
 0x6124,_bsp_i2c_io_init
 0x668C,_mqx_STARTUP
+0x6a20,_MEM_PATTERN_FILL_KATS_
 0x6A4C,_mem_zero
 0x6AB4,_mem_alloc_internal
 0x7136,_mem_free
@@ -194,3 +195,5 @@
 0x77DDC,_bsp_flashx_init
 0x77DFC,_bsp_i2c0_init
 0x77E64,_bsp_sci1_init
+0x1fff3a00,_var_current_channel_talkgroup
+0x1fff3a04,_var_current_rx_group_list
