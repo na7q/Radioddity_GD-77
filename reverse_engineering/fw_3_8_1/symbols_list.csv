@@ -82,7 +82,8 @@
 0x5EAC,_bsp_serial_io_init
 0x6124,_bsp_i2c_io_init
 0x668C,_mqx_STARTUP
-0x6a20,_MEM_PATTERN_FILL_KATS_
+0x6a20,_MEM_PATTERN_FILL_KATS_1_
+0x8688,_MEM_PATTERN_FILL_KATS_2_
 0x6A4C,_mem_zero
 0x6AB4,_mem_alloc_internal
 0x7136,_mem_free
