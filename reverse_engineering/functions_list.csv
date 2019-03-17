@@ -135,3 +135,4 @@
 0x6A65C,_io_fputc
 0x6AAE8,_CHECK_RUN_SCHEDULER
 0x6AB04,_sched_execute_scheduler_internal
+0x6ac7a,_int_kernel_isr
