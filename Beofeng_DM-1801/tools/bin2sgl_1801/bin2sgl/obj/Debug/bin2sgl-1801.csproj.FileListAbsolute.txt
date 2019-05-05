@@ -1,0 +1,6 @@
+C:\Users\badmin\Downloads\HamRadio\GD77\loaders\bin2sgl_1801\bin2sgl\bin\Debug\bin2sgl-1801.exe.config
+C:\Users\badmin\Downloads\HamRadio\GD77\loaders\bin2sgl_1801\bin2sgl\bin\Debug\bin2sgl-1801.exe
+C:\Users\badmin\Downloads\HamRadio\GD77\loaders\bin2sgl_1801\bin2sgl\bin\Debug\bin2sgl-1801.pdb
+C:\Users\badmin\Downloads\HamRadio\GD77\loaders\bin2sgl_1801\bin2sgl\obj\Debug\bin2sgl-1801.csprojResolveAssemblyReference.cache
+C:\Users\badmin\Downloads\HamRadio\GD77\loaders\bin2sgl_1801\bin2sgl\obj\Debug\bin2sgl-1801.exe
+C:\Users\badmin\Downloads\HamRadio\GD77\loaders\bin2sgl_1801\bin2sgl\obj\Debug\bin2sgl-1801.pdb
