@@ -48,7 +48,7 @@ namespace GD77_FirmwareLoader
 
 		public static int UploadFirmare(string fileName,FrmProgress progessForm=null)
 		{
-			byte[] encodeKey = new Byte[4] {(0x61 + 0x00), (0x61 + 0x0C), (0x61 + 0x0D), (0x61 + 0x01)};
+			byte[] encodeKey = new Byte[4] {(0x74), (0x21), (0x44), (0x39)};
 			_progessForm = progessForm;
 			_specifiedDevice = SpecifiedDevice.FindSpecifiedDevice(0x15A2, 0x0073);
 			if (_specifiedDevice == null)
@@ -60,11 +60,11 @@ namespace GD77_FirmwareLoader
 			byte[] fileBuf = File.ReadAllBytes(fileName);
 			if ( (Path.GetExtension(fileName).ToLower() == ".sgl") || (Path.GetExtension(fileName) == ".SGL") )
 			{
-				// Couls be a SGL file !
+				// Could be a SGL file !
 				fileBuf = checkForSGLAndReturnEncryptedData(fileBuf, encodeKey);
 				if (fileBuf == null)
 				{
-					Console.WriteLine("Error. SGL not Supported yet.");
+					Console.WriteLine("Error: Not an SGL or header error.");
 					return -5;
 				}
 				Console.WriteLine("Firmware file confirmed as SGL");
@@ -275,9 +275,9 @@ namespace GD77_FirmwareLoader
 			byte[][][] commands = { command0, command1, command2, command3, command4, command5, command6, commandErase, commandPostErase, commandProgram };
 			int commandNumber = 0;
 
-			//Buffer.BlockCopy(encodeKey, 0, command2[0], 4, 4);
+			Buffer.BlockCopy(encodeKey, 0, command2[0], 4, 4);
 
-			// Send the commands which the GD-77 expects before the start of the data
+			// Send the commands which the 1801 expects before the start of the data
 			while (commandNumber < commands.Length)
 			{
 				if (_progessForm != null)
@@ -336,10 +336,9 @@ namespace GD77_FirmwareLoader
 
 			if (buf_in_4.SequenceEqual(header_tag))
 			{
-				Console.WriteLine("ERROR: SGL! not supported yet.");
-				return null;
-			}
-			/*	// read and decode offset and xor tag
+				
+			
+				// read and decode offset and xor tag
 				//stream_in.Seek(0x000C, SeekOrigin.Begin);
 				//stream_in.Read(buf_in_4, 0, buf_in_4.Length);
 				Buffer.BlockCopy(fileBuf, 0x000C, buf_in_4, 0, buf_in_4.Length);
@@ -403,11 +402,11 @@ namespace GD77_FirmwareLoader
 				*/
 
 				// extract encoding key
-			/*	
-				byte key1 = (byte)(buf_in_512[0x005D] - 'a');
-				byte key2 = (byte)(buf_in_512[0x005E] - 'a');
-				byte key3 = (byte)(buf_in_512[0x005F] - 'a');
-				byte key4 = (byte)(buf_in_512[0x0060] - 'a');
+				
+				byte key1 = (byte)(buf_in_512[0x005D]);
+				byte key2 = (byte)(buf_in_512[0x005E]);
+				byte key3 = (byte)(buf_in_512[0x005F]);
+				byte key4 = (byte)(buf_in_512[0x0060]);
 				int encoding_key = (key1 << 12) + (key2 << 8) + (key3 << 4) + key4;
 				
 				Buffer.BlockCopy(buf_in_512, 0x005D, encodeKey, 0, 4);
@@ -419,7 +418,8 @@ namespace GD77_FirmwareLoader
 				byte length3 = (byte)buf_in_512[0x0002];
 				byte length4 = (byte)buf_in_512[0x0003];
 				int length = (length4 << 24) + (length3 << 16) + (length2 << 8) + length1;
-
+                                Console.WriteLine(String.Format("Length  : {0:X4}", length));
+				
 				// extract encoded raw firmware
 				/*FileStream stream_out = new FileStream(args[0] + "_" + String.Format("{0:X4}", encoding_key) + "_" + String.Format("{0:X6}", length) + ".raw", FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
 				stream_in.Seek(stream_in.Length - length, SeekOrigin.Begin);
@@ -429,13 +429,13 @@ namespace GD77_FirmwareLoader
 					stream_out.WriteByte((byte)c);
 				}*/
 
-		/*		byte[] retBuf = new byte[length];
+	         		byte[] retBuf = new byte[length];
 				Buffer.BlockCopy(fileBuf, fileBuf.Length - length, retBuf, 0, retBuf.Length);
 				return retBuf;
-			} */
+			} 
 			else
 			{ 
-				Console.WriteLine("ERROR: SGL! not supported yet.");
+				Console.WriteLine("ERROR: SGL did not decode.");
 				return null;
 			}
 		}
