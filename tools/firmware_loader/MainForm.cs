@@ -34,7 +34,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.ComponentModel.Design;
 using System.IO;
-using UsbLibrary;
 
 namespace GD77_FirmwareLoader
 {
