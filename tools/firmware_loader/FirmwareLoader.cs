@@ -319,7 +319,7 @@ namespace GD77_FirmwareLoader
             }
 
             // Create and submit transfer
-            ecRead = _usbReader.SubmitAsyncTransfer(readBuffer, 0, readBuffer.Length,  5000, out usbReadTransfer);
+            ecRead = _usbReader.SubmitAsyncTransfer(readBuffer, 0, readBuffer.Length, 10000, out usbReadTransfer);
             if (ecRead != ErrorCode.None)
             {
                 Console.WriteLine("ERROR: Submit Async Read Failed.");
@@ -341,7 +341,7 @@ namespace GD77_FirmwareLoader
             }
 #endif
 
-            WaitHandle.WaitAll(new WaitHandle[] { usbReadTransfer.AsyncWaitHandle }, 5000, false);
+            WaitHandle.WaitAll(new WaitHandle[] { usbReadTransfer.AsyncWaitHandle }, 10000, false);
 
             if (!usbReadTransfer.IsCompleted) 
                 usbReadTransfer.Cancel();

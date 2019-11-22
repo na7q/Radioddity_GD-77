@@ -52,7 +52,7 @@ namespace GD77_FirmwareLoader
 			this.Controls.Add(this.btnOpenFile);
 			this.KeyPreview = true;
 			this.Name = "MainForm";
-			this.Text = "GD-77 Firmware loader";
+			this.Text = "GD-77 Firmware Loader-X";
 			this.ResumeLayout(false);
 
 		}

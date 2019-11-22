@@ -57,7 +57,7 @@
 			this.Controls.Add(this.lblMessage);
 			this.Controls.Add(this.progressBar1);
 			this.Name = "FrmProgress";
-			this.Text = "GD-77 Firmware Loader";
+			this.Text = "GD-77 Firmware Loader-X";
 			this.ResumeLayout(false);
 
 		}
