@@ -1,5 +1,4 @@
-﻿//#define DUMP_INFOS
-//#define DUMP_USB_INFOS
+﻿//#define DUMP_USB_INFOS
 //#define DUMP_IO
 //#define EXTENDED_DEBUG
 /*
@@ -48,15 +47,14 @@ namespace GD77_FirmwareLoader
 {
 	class FirmwareLoader
 	{
-		private static readonly byte[] responseOK = { 0x41 };
-
-        private static readonly int      VendorId = 0x15A2;
-        private static readonly int      ProductId = 0x0073;
-        public static UsbDevice          _specifiedDevice = null;
-        private static int               interfaceID = -1;
+        private static readonly byte[] responseOK = { 0x41 };
+        private static readonly int VENDOR_ID = 0x15A2;
+        private static readonly int PRODUCT_ID = 0x0073;
+        private static int interfaceID = -1;
+        public static UsbDevice _specifiedDevice = null;
         private static UsbEndpointReader _usbReader;
         private static UsbEndpointWriter _usbWriter;
-        private static FrmProgress       _progessForm;
+        private static FrmProgress _progessForm;
 
         public static int UploadFirmare(string fileName,FrmProgress progessForm=null)
 		{
@@ -88,7 +86,6 @@ namespace GD77_FirmwareLoader
 				fileBuf = encrypt(fileBuf);
 			}
 
-
 			if (fileBuf.Length > 0x7b000)
 			{
                 Console.WriteLine("\nError. Firmware file too large.");
@@ -96,12 +93,15 @@ namespace GD77_FirmwareLoader
                 return -2;
 			}
 
+            _usbReader.Flush();
+            _usbWriter.Flush();
+
 			if (sendInitialCommands(encodeKey) == true)
 			{
 				int respCode = sendFileData(fileBuf);
 				if (respCode == 0)
 				{
-					Console.WriteLine("\nFirmware update complete. Please reboot the GD-77");
+					Console.WriteLine("\n *** Firmware update complete. Please reboot the GD-77 ***");
 				}
 				else
 				{
@@ -134,45 +134,11 @@ namespace GD77_FirmwareLoader
 
         static private bool openUSBDevice()
         {
-            UsbDeviceFinder usbFinder = new UsbDeviceFinder(VendorId, ProductId);
-            ErrorCode ec = ErrorCode.None;
+            UsbDeviceFinder usbFinder = new UsbDeviceFinder(VENDOR_ID, PRODUCT_ID);
             Byte configID = 255;
 
             // Find and open the usb device.
             UsbDevice usbDev = UsbDevice.OpenUsbDevice(usbFinder);
-
-#if DUMP_INFOS
-
-            if (usbDev == null)
-            {
-                throw new Exception("Device Not Found.");
-                // return null;
-            }
-
-            Console.WriteLine("*** GD77 USB Device Infos:\n  - " + usbDev.Info.ToString().Replace("\n", "\n  - "));
-            for (int iConfig = 0; iConfig < usbDev.Configs.Count; iConfig++)
-            {
-                UsbConfigInfo configInfo = usbDev.Configs[iConfig];
-                Console.WriteLine("   CONFIGURATION INFO: \n     - " + configInfo.ToString().Replace("\n", "\n     - "));
-                Console.WriteLine("   *** ConfigID: " + configInfo.Descriptor.ConfigID);
-                configID = configInfo.Descriptor.ConfigID;
-                
-                ReadOnlyCollection<UsbInterfaceInfo> interfaceList = configInfo.InterfaceInfoList;
-                for (int iInterface = 0; iInterface<interfaceList.Count; iInterface++)
-                {
-                    UsbInterfaceInfo interfaceInfo = interfaceList[iInterface];
-                    Console.WriteLine("   INTERFACE INFO: \n     - " + interfaceInfo.ToString().Replace("\n", "\n     - "));
-                    Console.WriteLine("   *** InterfaceID: " + interfaceInfo.Descriptor.InterfaceID);
-                    interfaceID = interfaceInfo.Descriptor.InterfaceID;
-                    
-                    ReadOnlyCollection<UsbEndpointInfo> endpointList = interfaceInfo.EndpointInfoList;
-                    for (int iEndpoint = 0; iEndpoint<endpointList.Count; iEndpoint++)
-                    {
-                        Console.WriteLine("   ENDPOINT LIST: \n     - " + endpointList[iEndpoint].ToString().Replace("\n", "\n     - "));
-                    }
-                }
-            }
-#endif
 
             try
             {
@@ -244,14 +210,14 @@ namespace GD77_FirmwareLoader
 
                 // open read endpoint 1.
                 _usbReader = usbDev.OpenEndpointReader(ReadEndpointID.Ep01);
+                //_usbReader.ReadThreadPriority = ThreadPriority.BelowNormal;
 
                 // open write endpoint 2
                 _usbWriter = usbDev.OpenEndpointWriter(WriteEndpointID.Ep02);
             }
             catch (Exception ex)
             {
-                Console.WriteLine();
-                Console.WriteLine((ec != ErrorCode.None ? ec + ":" : String.Empty) + ex.Message);
+                Console.WriteLine("ERROR: " + ex.Message);
                 return false;
             }
 
@@ -290,27 +256,18 @@ namespace GD77_FirmwareLoader
             ErrorCode ecRead;
             int transferredOut;
             int transferredIn;
+            UsbTransfer usbWriteTransfer;
             UsbTransfer usbReadTransfer;
-
-#if DUMP_IO
-            Console.WriteLine("ENTER _sendAndReceiveData()");
-            Console.WriteLine("      CMD: " + BitConverter.ToString(cmd) + ", LEN: " + cmd.Length);
-            Console.WriteLine("     RESP: " + BitConverter.ToString(resp) + ", LEN: " + resp.Length);
-#endif
+            byte[] readBuffer = new byte[4096];
+            byte[] sendBuffer = new byte[4 + cmd.Length];
 
             // Prepare buffer
-            byte[] readBuffer = new byte[64];
-            byte[] sendBuffer = new byte[4 + cmd.Length];
             sendBuffer[0] = 1;
             sendBuffer[1] = 0;
             sendBuffer[2] = Convert.ToByte(cmd.Length);
             sendBuffer[3] = Convert.ToByte(cmd.Length >> 8);
 
             Array.Copy(cmd, 0, sendBuffer, 4, cmd.Length);
-
-#if DUMP_IO
-            Console.WriteLine("   BUFFER: " + BitConverter.ToString(sendBuffer) + ", LEN: " + sendBuffer.Length);
-#endif
 
             if (sendBuffer.Length < cmd.Length)
             {
@@ -319,51 +276,38 @@ namespace GD77_FirmwareLoader
             }
 
             // Create and submit transfer
-            ecRead = _usbReader.SubmitAsyncTransfer(readBuffer, 0, readBuffer.Length, 10000, out usbReadTransfer);
+            ecRead = _usbReader.SubmitAsyncTransfer(readBuffer, 0, readBuffer.Length, 8000, out usbReadTransfer);
             if (ecRead != ErrorCode.None)
             {
                 Console.WriteLine("ERROR: Submit Async Read Failed.");
                 return false;
             }
-
-            ecWrite = _usbWriter.Write(sendBuffer, 500, out transferredOut);
-#if DUMP_IO
-            Console.WriteLine("Write DONE. Bytes written: " + transferredOut.ToString());
-#endif
+            ecWrite = _usbWriter.SubmitAsyncTransfer(sendBuffer, 0, sendBuffer.Length, 8000, out usbWriteTransfer);
             if (ecWrite != ErrorCode.None)
             {
-                Console.WriteLine("Write ERROR: " + UsbDevice.LastErrorString);
+                Console.WriteLine("ERROR: Submit Async Write Failed.");
+                return false;
             }
-#if DUMP_IO
-            else
+
+            WaitHandle.WaitAll(new WaitHandle[] { usbReadTransfer.AsyncWaitHandle/*, usbWriteTransfer.AsyncWaitHandle */}, 300, false);
+
+            if (!usbReadTransfer.IsCompleted)
             {
-                Console.WriteLine("** GOOD ***");
+                Console.Write(" [Zzz]");
+                // Give it a bit of time to finish
+                Thread.Sleep(5);
             }
-#endif
 
-            WaitHandle.WaitAll(new WaitHandle[] { usbReadTransfer.AsyncWaitHandle }, 10000, false);
-
-            if (!usbReadTransfer.IsCompleted) 
-                usbReadTransfer.Cancel();
-
+            ecWrite = usbWriteTransfer.Wait(out transferredOut);
             ecRead = usbReadTransfer.Wait(out transferredIn);
 
+            usbWriteTransfer.Dispose();
             usbReadTransfer.Dispose();
-
-#if DUMP_IO
-            Console.WriteLine("Read DONE. Bytes read: " + BitConverter.ToString(readBuffer) + ", LEN: " + readBuffer.Length.ToString() + ", READED: " + transferredIn.ToString());
-#endif
 
             if (transferredIn > 0)
             {
                 Array.Copy(readBuffer, 4, resp, 0, Math.Min(resp.Length, transferredIn));
-
             }
-
-#if DUMP_IO
-            Console.WriteLine("     RESP: " + BitConverter.ToString(resp) + ", LEN: " + resp.Length);
-            Console.WriteLine("***LEAVING _sendAndReceiveData()");
-#endif
 
             return true;
         }
@@ -379,13 +323,6 @@ namespace GD77_FirmwareLoader
 				Buffer.BlockCopy(resp, 0, responsePadded, 0, resp.Length);
 			}
 
-#if OLD_DEV
-            _specifiedDevice.SendData(cmd);
-			_specifiedDevice.ReceiveData(recBuf);// Wait for response
-#endif
-#if DUMP_IO
-            Console.WriteLine("  EXPECTED: " + BitConverter.ToString(responsePadded) + ", LEN: " + responsePadded.Length);
-#endif
             _sendAndReceiveData(cmd, recBuf);
 
 			if (recBuf.SequenceEqual(responsePadded))
@@ -394,8 +331,9 @@ namespace GD77_FirmwareLoader
 			}
 			else
 			{
-				Console.WriteLine("Error read returned ");
-				return false;
+                Console.WriteLine();
+                Console.WriteLine("Error unexpected response from GD-77: " + BitConverter.ToString(recBuf));
+                return false;
 			}
 		}
 
@@ -446,7 +384,12 @@ namespace GD77_FirmwareLoader
 			int fileLength = fileBuf.Length;
 			int totalBlocks = (fileLength / BLOCK_LENGTH) + 1;
 
-			while (address < fileLength)
+#if EXTENDED_DEBUG
+#else
+            Console.WriteLine(" - Firmware uploading...");
+#endif
+
+            while (address < fileLength)
 			{
 
 				if (address % BLOCK_LENGTH == 0)
@@ -456,8 +399,7 @@ namespace GD77_FirmwareLoader
 
 				updateBlockAddressAndLength(dataHeader, address, dataTransferSize);
 
-
-				if (address + dataTransferSize < fileLength)
+                if (address + dataTransferSize < fileLength)
 				{
 					Buffer.BlockCopy(fileBuf, address, dataHeader, 6, 32);
 
@@ -481,7 +423,7 @@ namespace GD77_FirmwareLoader
 #endif
 						if (sendAndCheckResponse(createChecksumData(fileBuf, checksumStartAddress, address), responseOK) == false)
 						{
-							Console.WriteLine("Error sending checksum");
+							Console.WriteLine("Error sending checksum.");
 							return -3;
 						}
 					}
@@ -500,7 +442,7 @@ namespace GD77_FirmwareLoader
 
 					if (sendAndCheckResponse(dataHeader, responseOK) == false)
 					{
-						Console.WriteLine("Error sending data");
+						Console.WriteLine("Error sending data.");
 						return -4;
 					}
 
@@ -508,7 +450,7 @@ namespace GD77_FirmwareLoader
 
 					if (sendAndCheckResponse(createChecksumData(fileBuf, checksumStartAddress, address), responseOK) == false)
 					{
-						Console.WriteLine("Error sending checksum");
+						Console.WriteLine("Error sending checksum.");
 						return -5;
 					}
 				}
@@ -530,31 +472,39 @@ namespace GD77_FirmwareLoader
 			byte[][] commandPostErase = new byte[][] { commandLetterA, responseOK };
 			byte[][] commandProgram = { new byte[] { 0x50, 0x52, 0x4f, 0x47, 0x52, 0x41, 0x4d, 0xf }, responseOK };//PROGRAM
 			byte[][][] commands = { command0, command1, command2, command3, command4, command5, command6, commandErase, commandPostErase, commandProgram };
-			int commandNumber = 0;
+            string[] commandNames = {"Sending Download command", "Sending ACK", "Sending encryption key", "Sending F-PROG command", "Sending radio modem number",
+                "Sending radio modem number 2", "Sending version", "Sending erase command", "Send post erase command", "Sending Program command"};
+            int commandNumber = 0;
 
 			Buffer.BlockCopy(encodeKey, 0, command2[0], 4, 4);
 
 			// Send the commands which the GD-77 expects before the start of the data
 			while (commandNumber < commands.Length)
 			{
-				if (_progessForm != null)
+                if (_progessForm != null)
 				{
-					_progessForm.SetLabel("Sending command " + commandNumber);
+                    _progessForm.SetLabel(commandNames[commandNumber]);
 				}
+
 #if EXTENDED_DEBUG
-				Console.WriteLine("Sending command " + commandNumber);
+				Console.WriteLine("Sending command " + commandNames[commandNumber] + " [ " + commandNumber + " ]");
 #else
-				Console.Write(".");
+                //Console.Write(".");
+                Console.Write("\n - " + commandNames[commandNumber]);
 #endif
 
 				if (sendAndCheckResponse(commands[commandNumber][0], commands[commandNumber][1]) == false)
 				{
-					Console.WriteLine("Error sending command ");
+					Console.WriteLine("Error sending command.");
 					return false;
 				}
 				commandNumber = commandNumber + 1;
 			}
-			return true;
+#if EXTENDED_DEBUG
+#else
+            Console.WriteLine();
+#endif
+            return true;
 		}
 
 		static byte[] encrypt(byte [] unencrypted)
