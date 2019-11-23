@@ -58,6 +58,8 @@
 			this.Controls.Add(this.progressBar1);
 			this.Name = "FrmProgress";
 			this.Text = "GD-77 Firmware Loader-X";
+			this.MaximizeBox = false;
+			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
 			this.ResumeLayout(false);
 
 		}

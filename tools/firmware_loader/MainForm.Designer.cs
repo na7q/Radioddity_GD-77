@@ -53,6 +53,8 @@ namespace GD77_FirmwareLoader
 			this.KeyPreview = true;
 			this.Name = "MainForm";
 			this.Text = "GD-77 Firmware Loader-X";
+			this.MaximizeBox = false;
+			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
 			this.ResumeLayout(false);
 
 		}

@@ -47,7 +47,7 @@ namespace GD77_FirmwareLoader
 		private void btnOpenFile_Click(object sender, EventArgs e)
 		{
 			OpenFileDialog openFileDialog1 = new OpenFileDialog();
-			openFileDialog1.Filter = "binary files (*.bin)|*.bin|firmware files (*.sgl)|*.sgl|All files (*.*)|*.*";
+			openFileDialog1.Filter = "firmware files (*.sgl)|*.sgl|binary files (*.bin)|*.bin|All files (*.*)|*.*";
 			openFileDialog1.RestoreDirectory = true;
 
 			if (openFileDialog1.ShowDialog() == DialogResult.OK)
