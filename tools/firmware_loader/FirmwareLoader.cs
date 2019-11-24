@@ -56,6 +56,7 @@ namespace GD77_FirmwareLoader
 		private static UsbEndpointWriter _usbWriter;
 		private static FrmProgress _progessForm;
 
+
 		public static int UploadFirmare(string fileName, FrmProgress progessForm = null)
 		{
 			byte[] encodeKey = new Byte[4] { (0x61 + 0x00), (0x61 + 0x0C), (0x61 + 0x0D), (0x61 + 0x01) };
@@ -414,7 +415,7 @@ namespace GD77_FirmwareLoader
 
 #if EXTENDED_DEBUG
 #else
-			Console.WriteLine(" - Firmware uploading...");
+			Console.Write(" - Programming data ");
 #endif
 
 			while (address < fileLength)
