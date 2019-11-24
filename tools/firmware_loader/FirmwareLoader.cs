@@ -1,6 +1,4 @@
-﻿//#define DUMP_USB_INFOS
-//#define DUMP_IO
-//#define EXTENDED_DEBUG
+﻿//#define EXTENDED_DEBUG
 /*
  * 
  * Copyright (C)2019 Roger Clark. VK3KYY
@@ -30,15 +28,8 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using LibUsbDotNet;
-using LibUsbDotNet.Info;
-using System.Collections.ObjectModel;
-using LibUsbDotNet.Main;
+using UsbLibDotNetDevice;
 using System.IO;
 using System.Windows.Forms;
 
@@ -48,21 +39,23 @@ namespace GD77_FirmwareLoader
 	class FirmwareLoader
 	{
 		private static readonly byte[] responseOK = { 0x41 };
+#if true
 		private static readonly int VENDOR_ID = 0x15A2;
 		private static readonly int PRODUCT_ID = 0x0073;
-		private static int interfaceID = -1;
-		public static UsbDevice _specifiedDevice = null;
-		private static UsbEndpointReader _usbReader;
-		private static UsbEndpointWriter _usbWriter;
+#else
+		private static readonly int VENDOR_ID = 0x1fc9;
+		private static readonly int PRODUCT_ID = 0x0094;
+#endif
+		public static UsbLibDotNetHIDDevice _specifiedDevice = null;
 		private static FrmProgress _progessForm;
-
 
 		public static int UploadFirmare(string fileName, FrmProgress progessForm = null)
 		{
 			byte[] encodeKey = new Byte[4] { (0x61 + 0x00), (0x61 + 0x0C), (0x61 + 0x0D), (0x61 + 0x01) };
 			_progessForm = progessForm;
 
-			if (openUSBDevice() == false)
+			_specifiedDevice = UsbLibDotNetHIDDevice.FindDevice(VENDOR_ID, PRODUCT_ID);
+			if (_specifiedDevice == null)
 			{
 				Console.WriteLine("Error. Can't connect to the GD-77");
 				return -1;
@@ -76,7 +69,6 @@ namespace GD77_FirmwareLoader
 				if (fileBuf == null)
 				{
 					Console.WriteLine("Error. Missing SGL! in .sgl file header");
-					closeUSBDevice();
 					return -5;
 				}
 				Console.WriteLine("Firmware file confirmed as SGL");
@@ -90,12 +82,8 @@ namespace GD77_FirmwareLoader
 			if (fileBuf.Length > 0x7b000)
 			{
 				Console.WriteLine("\nError. Firmware file too large.");
-				closeUSBDevice();
 				return -2;
 			}
-
-			_usbReader.Flush();
-			_usbWriter.Flush();
 
 			if (sendInitialCommands(encodeKey) == true)
 			{
@@ -130,7 +118,6 @@ namespace GD77_FirmwareLoader
 							}
 							break;
 					}
-					closeUSBDevice();
 					return -3;
 				}
 			}
@@ -141,200 +128,10 @@ namespace GD77_FirmwareLoader
 				{
 					MessageBox.Show("Error while sending initial commands.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 				}
-				closeUSBDevice();
 				return -4;
 			}
 
-			closeUSBDevice();
 			return 0;
-		}
-
-		static private bool openUSBDevice()
-		{
-			UsbDeviceFinder usbFinder = new UsbDeviceFinder(VENDOR_ID, PRODUCT_ID);
-			Byte configID = 255;
-
-			// Find and open the usb device.
-			UsbDevice usbDev = UsbDevice.OpenUsbDevice(usbFinder);
-
-			try
-			{
-				// Find and open the usb device.
-				usbDev = UsbDevice.OpenUsbDevice(usbFinder);
-
-				// If the device is open and ready
-				if (usbDev == null)
-				{
-					Console.WriteLine("Device Not Found.");
-					if (_progessForm != null)
-					{
-						MessageBox.Show("Device Not Found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-					}
-					return false;
-				}
-
-#if DUMP_USB_INFOS
-                Console.WriteLine("*** GD77 USB Device Infos:\n  - " + usbDev.Info.ToString().Replace("\n", "\n  - "));
-#endif
-				for (int iConfig = 0; iConfig < usbDev.Configs.Count; iConfig++)
-				{
-					UsbConfigInfo configInfo = usbDev.Configs[iConfig];
-#if DUMP_USB_INFOS
-                    Console.WriteLine("   CONFIGURATION INFO: \n     - " + configInfo.ToString().Replace("\n", "\n     - "));
-                    Console.WriteLine("   *** ConfigID: " + configInfo.Descriptor.ConfigID);
-#endif
-					configID = configInfo.Descriptor.ConfigID;
-
-					ReadOnlyCollection<UsbInterfaceInfo> interfaceList = configInfo.InterfaceInfoList;
-					for (int iInterface = 0; iInterface < interfaceList.Count; iInterface++)
-					{
-						UsbInterfaceInfo interfaceInfo = interfaceList[iInterface];
-#if DUMP_USB_INFOS
-                        Console.WriteLine("   INTERFACE INFO: \n     - " + interfaceInfo.ToString().Replace("\n", "\n     - "));
-                        Console.WriteLine("   *** InterfaceID: " + interfaceInfo.Descriptor.InterfaceID);
-#endif
-						interfaceID = interfaceInfo.Descriptor.InterfaceID;
-
-#if DUMP_USB_INFOS
-                        ReadOnlyCollection<UsbEndpointInfo> endpointList = interfaceInfo.EndpointInfoList;
-                        for (int iEndpoint = 0; iEndpoint < endpointList.Count; iEndpoint++)
-                        {
-                            Console.WriteLine("   ENDPOINT LIST: \n     - " + endpointList[iEndpoint].ToString().Replace("\n", "\n     - "));
-                        }
-#endif
-					}
-				}
-#if DUMP_USB_INFOS
-                Console.WriteLine("***\n");
-#endif
-
-				// If this is a "whole" usb device (libusb-win32, linux libusb)
-				// it will have an IUsbDevice interface. If not (WinUSB) the 
-				// variable will be null indicating this is an interface of a 
-				// device.
-				IUsbDevice wholeUsbDevice = usbDev as IUsbDevice;
-				if (!ReferenceEquals(wholeUsbDevice, null))
-				{
-#if DUMP_USB_INFOS
-                    Console.WriteLine("*** ConfigID: " + configID);
-                    Console.WriteLine("*** InterfaceID: " + interfaceID);
-#endif
-					// This is a "whole" USB device. Before it can be used, 
-					// the desired configuration and interface must be selected.
-
-					// Select config #1
-					wholeUsbDevice.SetConfiguration(configID);
-
-					// Claim interface #0.
-					wholeUsbDevice.ClaimInterface(interfaceID);
-				}
-
-				// open read endpoint 1.
-				_usbReader = usbDev.OpenEndpointReader(ReadEndpointID.Ep01);
-				_usbReader.ReadThreadPriority = ThreadPriority.AboveNormal;
-
-				// open write endpoint 2
-				_usbWriter = usbDev.OpenEndpointWriter(WriteEndpointID.Ep02);
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine("ERROR: " + ex.Message);
-				if (_progessForm != null)
-				{
-					MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-				}
-				return false;
-			}
-
-			_specifiedDevice = usbDev;
-
-			return true;
-		}
-
-		static private void closeUSBDevice()
-		{
-			if (_specifiedDevice != null)
-			{
-				if (_specifiedDevice.IsOpen)
-				{
-					// If this is a "whole" usb device (libusb-win32, linux libusb-1.0)
-					// it exposes an IUsbDevice interface. If not (WinUSB) the 
-					// 'wholeUsbDevice' variable will be null indicating this is 
-					// an interface of a device; it does not require or support 
-					// configuration and interface selection.
-					IUsbDevice wholeUsbDevice = _specifiedDevice as IUsbDevice;
-					if (!ReferenceEquals(wholeUsbDevice, null))
-					{
-						// Release interface #0.
-						wholeUsbDevice.ReleaseInterface(interfaceID);
-					}
-
-					_specifiedDevice.Close();
-				}
-				_specifiedDevice = null;
-			}
-		}
-
-		static private bool _sendAndReceiveData(byte[] cmd, byte[] resp)
-		{
-			ErrorCode ecWrite;
-			ErrorCode ecRead;
-			int transferredOut;
-			int transferredIn;
-			UsbTransfer usbWriteTransfer;
-			UsbTransfer usbReadTransfer;
-			byte[] readBuffer = new byte[4096];
-			byte[] sendBuffer = new byte[4 + cmd.Length];
-
-			// Prepare buffer
-			sendBuffer[0] = 1;
-			sendBuffer[1] = 0;
-			sendBuffer[2] = Convert.ToByte(cmd.Length);
-			sendBuffer[3] = Convert.ToByte(cmd.Length >> 8);
-
-			Array.Copy(cmd, 0, sendBuffer, 4, cmd.Length);
-
-			if (sendBuffer.Length < cmd.Length)
-			{
-				Console.WriteLine("ERROR: sendBuffer.Length < cmd.Length.");
-				return false;
-			}
-
-			// Create and submit transfer
-			ecRead = _usbReader.SubmitAsyncTransfer(readBuffer, 0, readBuffer.Length, 8000, out usbReadTransfer);
-			if (ecRead != ErrorCode.None)
-			{
-				Console.WriteLine("ERROR: Submit Async Read Failed.");
-				return false;
-			}
-			ecWrite = _usbWriter.SubmitAsyncTransfer(sendBuffer, 0, sendBuffer.Length, 8000, out usbWriteTransfer);
-			if (ecWrite != ErrorCode.None)
-			{
-				Console.WriteLine("ERROR: Submit Async Write Failed.");
-				return false;
-			}
-
-			WaitHandle.WaitAll(new WaitHandle[] { usbReadTransfer.AsyncWaitHandle/*, usbWriteTransfer.AsyncWaitHandle */}, 300, false);
-
-			if (!usbReadTransfer.IsCompleted)
-			{
-				Console.Write(" [Zzz]");
-				// Give it a bit of time to finish
-				Thread.Sleep(5);
-			}
-
-			ecWrite = usbWriteTransfer.Wait(out transferredOut);
-			ecRead = usbReadTransfer.Wait(out transferredIn);
-
-			usbWriteTransfer.Dispose();
-			usbReadTransfer.Dispose();
-
-			if (transferredIn > 0)
-			{
-				Array.Copy(readBuffer, 4, resp, 0, Math.Min(resp.Length, transferredIn));
-			}
-
-			return true;
 		}
 
 		static bool sendAndCheckResponse(byte[] cmd, byte[] resp)
@@ -348,7 +145,7 @@ namespace GD77_FirmwareLoader
 				Buffer.BlockCopy(resp, 0, responsePadded, 0, resp.Length);
 			}
 
-			_sendAndReceiveData(cmd, recBuf);
+			_specifiedDevice.SendAndReceiveData(cmd, recBuf);
 
 			if (recBuf.SequenceEqual(responsePadded))
 			{
