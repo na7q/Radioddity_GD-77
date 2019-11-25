@@ -49,6 +49,9 @@ namespace GD77_FirmwareLoader
 		public static UsbLibDotNetHIDDevice _specifiedDevice = null;
 		private static FrmProgress _progessForm;
 
+		private static readonly string waitPromp = "-\\|/";
+		private static int waitPrompIndex = 3;
+
 		public static int UploadFirmare(string fileName, FrmProgress progessForm = null)
 		{
 			byte[] encodeKey = new Byte[4] { (0x61 + 0x00), (0x61 + 0x0C), (0x61 + 0x0D), (0x61 + 0x01) };
@@ -213,6 +216,8 @@ namespace GD77_FirmwareLoader
 #if EXTENDED_DEBUG
 #else
 			Console.Write(" - Programming data ");
+			int cursorLPos = Console.CursorLeft;
+			int cursorTPos = Console.CursorTop;
 #endif
 
 			while (address < fileLength)
@@ -245,7 +250,10 @@ namespace GD77_FirmwareLoader
 #if EXTENDED_DEBUG
 						Console.WriteLine("Sent block " + (address / BLOCK_LENGTH) + " of " + totalBlocks);
 #else
-						Console.Write(".");
+						//Console.Write(".");
+						waitPrompIndex = (waitPrompIndex + 1) % 4;
+						Console.SetCursorPosition(cursorLPos, cursorTPos);
+						Console.Write(waitPromp[waitPrompIndex]);
 #endif
 						if (sendAndCheckResponse(createChecksumData(fileBuf, checksumStartAddress, address), responseOK) == false)
 						{
@@ -259,7 +267,10 @@ namespace GD77_FirmwareLoader
 #if EXTENDED_DEBUG
 					Console.WriteLine("Sending last block");
 #else
-					Console.Write(".");
+					//Console.Write(".");
+					waitPrompIndex = (waitPrompIndex + 1) % 4;
+					Console.SetCursorPosition(cursorLPos, cursorTPos);
+					Console.Write(waitPromp[waitPrompIndex]);
 #endif
 
 					dataTransferSize = fileLength - address;
@@ -281,6 +292,12 @@ namespace GD77_FirmwareLoader
 					}
 				}
 			}
+#if EXTENDED_DEBUG
+#else
+			//Console.Write("\b\b\b\b\b: done.");
+			Console.SetCursorPosition(cursorLPos, cursorTPos);
+			Console.Write(": done.");
+#endif
 			return 0;
 		}
 

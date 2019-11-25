@@ -101,32 +101,32 @@ namespace UsbLibDotNetDevice
 					}
 				}
 
-#if DUMP_USB_INFOS
-				Console.WriteLine("*** GD77 USB Device Infos:\n  - " + usbDev.Info.ToString().Replace("\n", "\n  - "));
-				for (int iConfig = 0; iConfig < usbDev.Configs.Count; iConfig++)
+				if (String.Compare(System.Environment.GetEnvironmentVariable("USBLIBDOTNET_VERBOSE"), "yes", true) == 0)
 				{
-					UsbConfigInfo configInfo = usbDev.Configs[iConfig];
-
-					Console.WriteLine("   *** ConfigID: " + configInfo.Descriptor.ConfigID);
-					Console.WriteLine("   CONFIGURATION INFO: \n     - " + configInfo.ToString().Replace("\n", "\n        - "));
-
-					ReadOnlyCollection<UsbInterfaceInfo> interfaceList = configInfo.InterfaceInfoList;
-					for (int iInterface = 0; iInterface < interfaceList.Count; iInterface++)
+					Console.WriteLine("*** GD77 USB Device Infos:\n  - " + usbDev.Info.ToString().Replace("\n", "\n  - "));
+					for (int iConfig = 0; iConfig < usbDev.Configs.Count; iConfig++)
 					{
-						UsbInterfaceInfo interfaceInfo = interfaceList[iInterface];
-						Console.WriteLine("         *** InterfaceID: " + interfaceInfo.Descriptor.InterfaceID);
-						Console.WriteLine("         INTERFACE INFO: \n        - " + interfaceInfo.ToString().Replace("\n", "\n        - "));
+						UsbConfigInfo configInfo = usbDev.Configs[iConfig];
 
-						ReadOnlyCollection<UsbEndpointInfo> endpointList = interfaceInfo.EndpointInfoList;
-						for (int iEndpoint = 0; iEndpoint < endpointList.Count; iEndpoint++)
+						Console.WriteLine("   *** ConfigID: " + configInfo.Descriptor.ConfigID);
+						Console.WriteLine("   CONFIGURATION INFO: \n     - " + configInfo.ToString().Replace("\n", "\n        - "));
+
+						ReadOnlyCollection<UsbInterfaceInfo> interfaceList = configInfo.InterfaceInfoList;
+						for (int iInterface = 0; iInterface < interfaceList.Count; iInterface++)
 						{
-							Console.WriteLine("            ENDPOINT LIST: \n           - " + endpointList[iEndpoint].ToString().Replace("\n", "\n           - "));
+							UsbInterfaceInfo interfaceInfo = interfaceList[iInterface];
+							Console.WriteLine("         *** InterfaceID: " + interfaceInfo.Descriptor.InterfaceID);
+							Console.WriteLine("         INTERFACE INFO: \n        - " + interfaceInfo.ToString().Replace("\n", "\n        - "));
+
+							ReadOnlyCollection<UsbEndpointInfo> endpointList = interfaceInfo.EndpointInfoList;
+							for (int iEndpoint = 0; iEndpoint < endpointList.Count; iEndpoint++)
+							{
+								Console.WriteLine("            ENDPOINT LIST: \n           - " + endpointList[iEndpoint].ToString().Replace("\n", "\n           - "));
+							}
 						}
 					}
+					Console.WriteLine("***\n");
 				}
-				Console.WriteLine("***\n");
-#endif
-
 				if (endpointsFound == false)
 				{
 					Console.WriteLine("Couldn't find 2 endpoints for interface #" + interfaceID.ToString() + " of configuration #" + configID.ToString());
