@@ -11,19 +11,22 @@
 # To use the CPS etc again, use the DeviceManager to uninstall the driver associated with idVendor=0x15a2, idProduct=0x0073 (this will appear as a libusb-win32 device)
 # Then unplug the GD-77 and reconnect, and the HID driver will be re-installed
 #
+# You need to install future if you're running python2: 
+#    debian like: sudo apt-get install python-future
+#    or: pip install future
+#
+# You also need python-usb or python3-usb
+#
 ################################################################################################################################################
+from __future__ import print_function
 import usb
 import getopt, sys
-# import time
 import ntpath
 import os.path
-#import struct
 from array import array
 
 # Globals
 responseOK = [0x41]
-
-
 
 
 ########################################################################
@@ -54,7 +57,6 @@ def sendAndCheckResponse(dev, cmd, resp):
     USB_WRITE_ENDPOINT  = 0x02
     USB_READ_ENDPOINT   = 0x81
     TRANSFER_LENGTH     = 38
-    ##zeroPad = [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]
     zeroPad = [0x0] * TRANSFER_LENGTH
     headerData = [0x0] * 4
         
@@ -91,7 +93,10 @@ def createChecksumData(buf, startAddress, endAddress):
     cs = 0
     
     for i in range(startAddress, endAddress):
-        cs = cs + ord(buf[i]) #the file data seems to be a string, hence the ord() function is needed to convert it to an integer
+        if (sys.version_info > (3, 0)):
+            cs = cs + buf[i]
+        else:
+            cs = cs + ord(buf[i]) #the file data seems to be a string, hence the ord() function is needed to convert it to an integer
      
     checkSumData[4] = (cs % 256) & 0xff
     checkSumData[5] = ((cs >> 8) % 256) & 0xff
@@ -101,11 +106,8 @@ def createChecksumData(buf, startAddress, endAddress):
 
 
 def updateBlockAddressAndLength(buf, address, length):
-    # Length is 16 bits long in bytes 5 and 6
 	buf[5] = ((length) % 256) & 0xff
 	buf[4] = ((length >> 8) % 256) & 0xff
-
-	# Address is 4 bytes long, in the first 4 bytes
 	buf[3] = ((address) % 256) & 0xff
 	buf[2] = ((address >> 8) % 256) & 0xff
 	buf[1] = ((address >> 16) % 256) & 0xff
@@ -117,14 +119,13 @@ def updateBlockAddressAndLength(buf, address, length):
 ###########################################b##########
 def sendFileData(fileBuf, dev):
     dataHeader = [0x00] * (0x20 + 0x06)
-    ##dataHeader  =  [0x01,0x00,0x26,0x00,0xDE,0xAD,0xBE,0xEF,0x00,0x20]#Beginning of each data block trasmission. Values with DEADBEEF are where the 32 bit address is inserted. 
     BLOCK_LENGTH = 1024 #1k
     DATA_TRANSFER_SIZE = 0x20
     checksumStartAddress = 0
     address = 0
          
     fileLength = len(fileBuf)
-    totalBlocks = (fileLength / BLOCK_LENGTH) + 1
+    totalBlocks = (fileLength // BLOCK_LENGTH) + 1
 
     while address < fileLength:
         if ((address % BLOCK_LENGTH) == 0):
@@ -135,7 +136,10 @@ def sendFileData(fileBuf, dev):
         if ((address + DATA_TRANSFER_SIZE) < fileLength):
             
             for i in range(DATA_TRANSFER_SIZE):
-                dataHeader[6 + i] = ord(fileBuf[address + i])  ## + [ord(i) for i in input[address:(address + DATA_TRANSFER_SIZE)]]
+                if (sys.version_info > (3, 0)):
+                    dataHeader[6 + i] = fileBuf[address + i]
+                else:
+                    dataHeader[6 + i] = ord(fileBuf[address + i])  ## + [ord(i) for i in input[address:(address + DATA_TRANSFER_SIZE)]]
  
             if  (sendAndCheckResponse(dev, dataHeader, responseOK) == False):
                 print("Error sending data")
@@ -145,7 +149,7 @@ def sendFileData(fileBuf, dev):
             address = address + DATA_TRANSFER_SIZE
             
             if ((address % 0x400) == 0):
-                print("\r - Sent block " + str(address / BLOCK_LENGTH) + " of "+ str(totalBlocks)),
+                print("\r - Sent block " + str(address // BLOCK_LENGTH) + " of "+ str(totalBlocks), end='')
                 sys.stdout.flush()
 
                 if (sendAndCheckResponse(dev, createChecksumData(fileBuf, checksumStartAddress, address), responseOK) == False):
@@ -154,7 +158,7 @@ def sendFileData(fileBuf, dev):
                     break
                 
         else:
-            print("\r - Sending last block                   "),
+            print("\r - Sending last block                   ", end='')
             sys.stdout.flush()
             
             DATA_TRANSFER_SIZE = fileLength - address
@@ -162,7 +166,10 @@ def sendFileData(fileBuf, dev):
             updateBlockAddressAndLength(dataHeader, address, DATA_TRANSFER_SIZE)
             
             for i in range(DATA_TRANSFER_SIZE):
-                dataHeader[6 + i] = ord(fileBuf[address + i])  ## + [ord(i) for i in input[address:(address + DATA_TRANSFER_SIZE)]]
+                if (sys.version_info > (3, 0)):
+                    dataHeader[6 + i] = fileBuf[address + i]
+                else:
+                    dataHeader[6 + i] = ord(fileBuf[address + i])  ## + [ord(i) for i in input[address:(address + DATA_TRANSFER_SIZE)]]
             
             if (sendAndCheckResponse(dev, dataHeader, responseOK) == False):
                 print("Error sending data")
@@ -170,9 +177,6 @@ def sendFileData(fileBuf, dev):
                 break
             
             address = address + DATA_TRANSFER_SIZE
-                 
-            #print("\r - Sent block " + str(address / BLOCK_LENGTH) + " of "+ str(totalBlocks)),
-            #sys.stdout.flush()
 
             if (sendAndCheckResponse(dev, createChecksumData(fileBuf, checksumStartAddress, address), responseOK) == False):
                 print("Error sending checksum")
@@ -220,14 +224,21 @@ def sendInitialCommands(dev, encodeKey):
 ###########################################################################################################################################
 def checkForSGLAndReturnEncryptedData(fileBuf, encodeKey):
     header_tag = list("SGL!")
-    buf_in_4 = list(fileBuf[0:4])
+
+    if (sys.version_info > (3, 0)):
+        buf_in_4 = list("".join(map(chr, fileBuf[0:4])))
+    else:
+        buf_in_4 = list(fileBuf[0:4])
     
     if buf_in_4 == header_tag:
         # read and decode offset and xor tag
         buf_in_4 = list(fileBuf[0x000C : 0x000C + 4])
         
         for i in range(0, 4):
-            buf_in_4[i] = ord(buf_in_4[i]) ^ ord(header_tag[i])
+                if (sys.version_info > (3, 0)):
+                    buf_in_4[i] = buf_in_4[i] ^ ord(header_tag[i])
+                else:
+                    buf_in_4[i] = ord(buf_in_4[i]) ^ ord(header_tag[i])
             
         offset = buf_in_4[0] + 256 * buf_in_4[1]
         xor_data = [ buf_in_4[2], buf_in_4[3] ]
@@ -237,7 +248,10 @@ def checkForSGLAndReturnEncryptedData(fileBuf, encodeKey):
     
         xor_idx = 0;
         for i in range(0, 512):
-            buf_in_512[i] = ord(buf_in_512[i]) ^ xor_data[xor_idx]
+            if (sys.version_info > (3, 0)):
+                buf_in_512[i] = buf_in_512[i] ^ xor_data[xor_idx]
+            else:
+                buf_in_512[i] = ord(buf_in_512[i]) ^ xor_data[xor_idx]
             
             xor_idx += 1
             if xor_idx == 2:
@@ -286,7 +300,7 @@ def main():
         try:                                
             opts, args = getopt.getopt(sys.argv[1:], "hf:", ["help", "firmware="])
         except getopt.GetoptError as err:
-            print str(err)
+            print(str(err))
             usage()
             sys.exit(2)
         
