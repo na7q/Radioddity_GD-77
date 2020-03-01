@@ -58,15 +58,13 @@ namespace GD77_FirmwareLoader
 			OutputType_DM1801
 		}
 
-		private static OutputType outputType = OutputType.OutputType_GD77;
+		public static OutputType outputType = OutputType.OutputType_GD77;
 
-		public static int UploadFirmware(string fileName, FrmProgress progessForm = null, OutputType tOutput = OutputType.OutputType_GD77)
+		public static int UploadFirmware(string fileName, FrmProgress progessForm = null)
 		{
 			byte[] encodeKey;
 
 			_progessForm = progessForm;
-
-			outputType = tOutput;
 
 			if (outputType == OutputType.OutputType_GD77)
 			{

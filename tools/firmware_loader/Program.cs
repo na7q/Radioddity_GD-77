@@ -36,8 +36,9 @@ namespace GD77_FirmwareLoader
 			else
 			{
 				//bool guiMode = false;
-				int idx = Array.IndexOf(args, "DM-1801"); 
-				FirmwareLoader.OutputType outputType = ((idx >= 0) ? FirmwareLoader.OutputType.OutputType_DM1801 : FirmwareLoader.OutputType.OutputType_GD77);
+				int idx = Array.IndexOf(args, "DM-1801");
+
+				FirmwareLoader.outputType = ((idx >= 0) ? FirmwareLoader.OutputType.OutputType_DM1801 : FirmwareLoader.OutputType.OutputType_GD77);
 
 				if (idx >= 0)
 				{
@@ -73,7 +74,7 @@ namespace GD77_FirmwareLoader
 					frmProgress.SetProgressPercentage(0);
 					frmProgress.Show();
 
-					exitCode = FirmwareLoader.UploadFirmware(args[0], frmProgress, outputType);
+					exitCode = FirmwareLoader.UploadFirmware(args[0], frmProgress);
 					frmProgress.Close();
 				}
 				else
@@ -86,7 +87,7 @@ namespace GD77_FirmwareLoader
 
 					bool curs = Console.CursorVisible;
 					Console.CursorVisible = false;
-					exitCode = FirmwareLoader.UploadFirmware(args[0], null, outputType);
+					exitCode = FirmwareLoader.UploadFirmware(args[0]);
 					Console.CursorVisible = curs;
 				}
 			}
