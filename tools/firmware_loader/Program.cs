@@ -60,13 +60,13 @@ namespace GD77_FirmwareLoader
 				idx = Array.IndexOf(args, "GUI");
 				if (idx >= 0)
 				{
-					//args = RemoveArgAt(args, idx);
+					args = RemoveArgAt(args, idx);
 
-					//if (args.Length <= 0)
-					//{
-					//	Console.WriteLine("ERROR: No filename specified.");
-						//Environment.Exit(-1);
-					//}
+					if (args.Length <= 0)
+					{
+						Console.WriteLine("ERROR: No filename specified.");
+						Environment.Exit(-1);
+					}
 
 					FrmProgress frmProgress = new FrmProgress();
 					frmProgress.SetLabel("");
